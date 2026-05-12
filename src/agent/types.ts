@@ -21,6 +21,7 @@ export interface ProviderConfig {
   type: 'openrouter' | 'google';
   apiKey: string;
   models: string[];
+  fallback?: { type: 'openrouter' | 'google'; modelId: string }[];
 }
 
 export interface AgentConfig {
