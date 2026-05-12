@@ -44,43 +44,41 @@ export async function runAgent(opts: {
     tools,
     maxSteps,
     toolChoice: 'auto',
-    onStep(step: any) {
+    onStepFinish(step: any) {
       stepCount++;
-
       const toolCalls: any[] = step.toolCalls ?? [];
       const toolResults: any[] = step.toolResults ?? [];
       const text: string = step.text ?? '';
       const finishReason: string = step.finishReason ?? '';
 
-      // Log thoughts
       if (text.trim() && finishReason !== 'stop') {
         log('thought', text.trim(), undefined, modelId, provider.type);
       }
-
-      // Log final answer
       if (text.trim() && finishReason === 'stop') {
         log('agent_message', text.trim(), {
           inputTokens: step.usage?.promptTokens,
           outputTokens: step.usage?.completionTokens,
         }, modelId, provider.type);
       }
-
-      // Log tool calls
       for (const tc of toolCalls) {
         log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
       }
-
-      // Log tool results
       for (const tr of toolResults) {
         const raw = tr.result;
-        const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
-        const preview = text.length > 1000 ? text.slice(0, 1000) + '…' : text;
-        log('tool_result', `◀ ${tr.toolName}`, preview, modelId, provider.type);
+        const txt = typeof raw === 'string' ? raw : JSON.stringify(raw);
+        log('tool_result', `◀ ${tr.toolName}`, txt.slice(0, 1000), modelId, provider.type);
       }
-
       log('info', `Step ${stepCount}/${maxSteps} — finish: ${finishReason} | tools: ${toolCalls.length}`);
     }
   });
+
+  // Si no hubo steps (respuesta directa sin tools), loguear igual
+  if (stepCount === 0 && result.text?.trim()) {
+    log('agent_message', result.text.trim(), {
+      inputTokens: result.usage?.promptTokens,
+      outputTokens: result.usage?.completionTokens,
+    }, modelId, provider.type);
+  }
 
   log('info', `Done. Steps: ${stepCount} | Finish: ${result.finishReason}`);
 
