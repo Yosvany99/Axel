@@ -196,6 +196,8 @@ export default function App() {
 
   // Provider form
   const [newKey, setNewKey] = useState('');
+  const [serperKey, setSerperKey] = useState('');
+  const [serperSaved, setSerperSaved] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
   const [addingKey, setAddingKey] = useState(false);
   const [keyError, setKeyError] = useState('');
@@ -560,6 +562,30 @@ export default function App() {
                       ))}
                     </div>
                   )}
+                </Section>
+
+                {/* Serper API */}
+                <Section title="Web Search" icon={Icons.terminal}>
+                  <p style={{ color: 'var(--text2)', fontSize: 12, marginBottom: 12, lineHeight: 1.6 }}>
+                    Serper API key para búsquedas web reales. Obtén una gratis en <a href="https://serper.dev" target="_blank" style={{color:'var(--accent2)'}}>serper.dev</a>
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="password"
+                      value={serperKey}
+                      onChange={e => setSerperKey(e.target.value)}
+                      placeholder="Pega tu Serper API key aquí..."
+                      style={inputStyle}
+                    />
+                    <button onClick={async () => {
+                      await api('/api/config/serper', { method: 'POST', body: JSON.stringify({ key: serperKey }) });
+                      setSerperSaved(true);
+                      setTimeout(() => setSerperSaved(false), 2000);
+                    }} disabled={!serperKey.trim()} style={primaryBtn}>
+                      {serperSaved ? <Icon d={Icons.check} size={14} /> : <Icon d={Icons.plus} size={14} />}
+                      {serperSaved ? 'Saved!' : 'Save'}
+                    </button>
+                  </div>
                 </Section>
 
                 {/* Agent config */}

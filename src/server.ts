@@ -123,6 +123,25 @@ app.delete('/api/providers/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Serper key ───────────────────────────────────────────
+app.post('/api/config/serper', async (req, res) => {
+  const { key } = req.body;
+  if (!key?.trim()) return res.status(400).json({ error: 'key required' });
+  process.env.SERPER_API_KEY = key.trim();
+  // Persist to .env file
+  const envPath = require('path').resolve(process.cwd(), '.env');
+  const fs = require('fs');
+  let envContent = '';
+  try { envContent = fs.readFileSync(envPath, 'utf-8'); } catch {}
+  if (envContent.includes('SERPER_API_KEY=')) {
+    envContent = envContent.replace(/SERPER_API_KEY=.*/g, `SERPER_API_KEY=${key.trim()}`);
+  } else {
+    envContent += `\nSERPER_API_KEY=${key.trim()}\n`;
+  }
+  fs.writeFileSync(envPath, envContent);
+  res.json({ ok: true });
+});
+
 // ── Config ────────────────────────────────────────────────
 app.patch('/api/config', async (req, res) => {
   await agent.updateConfig(req.body);
