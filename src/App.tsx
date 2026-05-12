@@ -380,8 +380,11 @@ export default function App() {
                 <input type="checkbox" checked={showThoughts} onChange={e => setShowThoughts(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
                 Thoughts
               </label>
-              <button onClick={async () => { await api('/api/history', { method: 'DELETE' }); }} style={smallBtn}>
-                <Icon d={Icons.trash} size={13} /> Clear
+              <button onClick={async () => { await api('/api/logs', { method: 'DELETE' }); setLogs([]); }} style={smallBtn} title="Limpiar chat visual">
+                <Icon d={Icons.eye} size={13} /> Chat
+              </button>
+              <button onClick={async () => { await api('/api/history', { method: 'DELETE' }); await api('/api/logs', { method: 'DELETE' }); setLogs([]); }} style={{ ...smallBtn, color: 'var(--red)' }} title="Limpiar chat + contexto del modelo">
+                <Icon d={Icons.trash} size={13} /> Todo
               </button>
             </div>
           )}
