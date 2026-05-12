@@ -49,13 +49,16 @@ async function detectProvider(apiKey: string): Promise<{ type: 'google' | 'openr
   if (apiKey.startsWith('AIza')) {
     return {
       type: 'google',
-      models: [
-        'gemini-2.5-pro-preview-06-05',
-        'gemini-2.5-flash-preview-05-20',
-        'gemini-2.0-flash',
-        'gemini-1.5-pro',
-        'gemini-1.5-flash',
-      ]
+      models: await (async () => {
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=100`);
+          const d = await r.json();
+          return (d.models || [])
+            .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+            .map((m: any) => m.name.replace('models/', ''))
+            .sort();
+        } catch { return ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash']; }
+      })()
     };
   }
 

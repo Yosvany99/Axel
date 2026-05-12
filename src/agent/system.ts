@@ -29,6 +29,7 @@ export class AgentSystem {
   private logs: AgentLog[] = [];
   private history: CoreMessage[] = [];
   private providers: Map<string, ProviderConfig> = new Map();
+  private readonly PROVIDERS_FILE = path.resolve(process.cwd(), 'agent_providers.json');
   private config: AgentConfig = { ...DEFAULT_CONFIG };
   private isProcessing = false;
   private currentModel?: string;
@@ -36,6 +37,7 @@ export class AgentSystem {
 
   async init() {
     await this.loadConfig();
+    await this.loadProviders();
     await this.loadHistory();
     await this.loadLogs();
   }
@@ -62,10 +64,11 @@ export class AgentSystem {
     const id = randomUUID();
     const p: ProviderConfig = { id, type, apiKey, models };
     this.providers.set(id, p);
+    this.saveProviders();
     return p;
   }
 
-  removeProvider(id: string) { this.providers.delete(id); }
+  removeProvider(id: string) { this.providers.delete(id); this.saveProviders(); }
 
   getProviders(): Omit<ProviderConfig, 'apiKey'>[] {
     return [...this.providers.values()].map(({ apiKey: _, ...rest }) => rest);
@@ -73,6 +76,19 @@ export class AgentSystem {
 
   getProviderWithKey(id: string): ProviderConfig | undefined {
     return this.providers.get(id);
+  }
+
+  private async saveProviders() {
+    const data = [...this.providers.values()];
+    await fs.writeFile(this.PROVIDERS_FILE, JSON.stringify(data, null, 2));
+  }
+
+  private async loadProviders() {
+    try {
+      const raw = await fs.readFile(this.PROVIDERS_FILE, 'utf-8');
+      const data: ProviderConfig[] = JSON.parse(raw);
+      for (const p of data) this.providers.set(p.id, p);
+    } catch { /* no providers saved yet */ }
   }
 
   // ── History ──────────────────────────────────────────────
@@ -190,7 +206,7 @@ export class AgentSystem {
       });
 
       // Append new messages (assistant replies + tool turns) to history
-      this.history.push(...newMessages);
+      if (Array.isArray(newMessages)) this.history.push(...newMessages);
       await this.saveHistory();
     } catch (err: any) {
       this.addLog('error', `Agent failed: ${err.message}`);

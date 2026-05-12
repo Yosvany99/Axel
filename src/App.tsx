@@ -521,7 +521,7 @@ export default function App() {
                             </button>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                            {p.models.slice(0, 8).map(m => (
+                            {p.models.map(m => (
                               <button key={m} onClick={() => updateConfig({ primaryProvider: p.id, primaryModel: m })} style={{
                                 padding: '3px 8px', borderRadius: 6, fontSize: 10, fontFamily: 'var(--font-mono)',
                                 background: config.primaryProvider === p.id && config.primaryModel === m ? 'var(--accent)' : 'var(--surface)',

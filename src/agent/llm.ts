@@ -43,7 +43,8 @@ export async function runAgent(opts: {
     messages,
     tools,
     maxSteps,
-    toolChoice: 'auto',
+    toolChoice: "auto",
+    providerOptions: { google: { thinkingConfig: { thinkingBudget: 0 } } },
     onStepFinish(step: StepResult<any>) {
       stepCount++;
 
@@ -97,7 +98,7 @@ export async function runAgent(opts: {
 
   // responseMessages contains the new assistant + tool messages to append
   return {
-    newMessages: result.responseMessages as CoreMessage[],
+    newMessages: (result.responseMessages ?? []) as CoreMessage[],
     finishReason: result.finishReason
   };
 }
