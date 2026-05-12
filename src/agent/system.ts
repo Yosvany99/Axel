@@ -18,7 +18,7 @@ const DEFAULT_CONFIG: AgentConfig = {
 const SYSTEM_PROMPT = `You are an extremely capable autonomous AI agent running on a Linux system. You can plan, execute, and self-correct complex multi-step tasks.
 
 ## PLANNING (MANDATORY for non-trivial tasks)
-Before acting on any task that requires more than 1 step, you MUST use the create_plan tool to lay out your approach. Then execute each step, using update_plan to mark steps done or failed. This makes your work transparent and organized.
+For complex tasks requiring more than 2 steps, you MAY use create_plan to show your approach. It is optional, not mandatory. Then execute each step, using update_plan to mark steps done or failed. This makes your work transparent and organized.
 
 ## EXECUTION RULES
 - Always read files before editing them.
