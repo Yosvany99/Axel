@@ -210,6 +210,9 @@ export default function App() {
     let es: EventSource | null = null;
     let statusInterval: any = null;
 
+    // Carga inicial de todos los logs
+    fetch('/api/logs').then(r => r.json()).then(setLogs).catch(() => {});
+
     function connectSSE() {
       es = new EventSource('/api/logs/stream');
       es.onmessage = (e) => {
