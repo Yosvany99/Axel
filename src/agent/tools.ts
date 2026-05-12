@@ -173,7 +173,32 @@ export function getTools() {
       }
     }),
 
-    memory_list: tool({
+    create_plan: tool({
+    description: 'Create a visible plan before executing a multi-step task. Shows the plan in the chat.',
+    parameters: z.object({
+      title: z.string().describe('Short title for the task'),
+      steps: z.array(z.string()).describe('List of steps to execute')
+    }),
+    execute: async ({ title, steps }) => {
+      const plan = steps.map((s, i) => `${i + 1}. [ ] ${s}`).join('\n');
+      return `PLAN: ${title}\n${plan}`;
+    }
+  }),
+
+  update_plan: tool({
+    description: 'Update the status of a plan step (done, failed, in progress).',
+    parameters: z.object({
+      step: z.number().describe('Step number (1-based)'),
+      status: z.enum(['done', 'failed', 'in_progress']).describe('New status'),
+      note: z.string().optional().describe('Optional note about the result')
+    }),
+    execute: async ({ step, status, note }) => {
+      const icon = status === 'done' ? '✅' : status === 'failed' ? '❌' : '⏳';
+      return `Step ${step}: ${icon} ${status.toUpperCase()}${note ? ` — ${note}` : ''}`;
+    }
+  }),
+
+  memory_list: tool({
       description: 'List all keys stored in persistent memory.',
       parameters: z.object({}),
       execute: async () => {
