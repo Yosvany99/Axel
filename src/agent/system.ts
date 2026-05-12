@@ -96,7 +96,13 @@ export class AgentSystem {
   private async loadHistory() {
     try {
       const raw = await fs.readFile(HISTORY_FILE, 'utf-8');
-      this.history = JSON.parse(raw);
+      const loaded = JSON.parse(raw);
+      this.history = loaded.map((m: any) => {
+        if (m.role === 'assistant' && Array.isArray(m.content)) {
+          return { ...m, content: m.content.filter((p: any) => p.type !== 'reasoning' && p.type !== 'tool-call' || p.type === 'tool-call') };
+        }
+        return m;
+      });
     } catch { this.history = []; }
   }
 
