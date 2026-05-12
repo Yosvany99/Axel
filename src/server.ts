@@ -23,6 +23,29 @@ app.get('/api/status', (_, res) => {
   });
 });
 
+// ── SSE — logs en tiempo real ────────────────────────────
+app.get('/api/logs/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let lastId = parseInt(req.query.from as string || '0');
+
+  const send = () => {
+    const logs = agent.getLogs();
+    const newLogs = logs.slice(lastId);
+    if (newLogs.length > 0) {
+      res.write(`data: ${JSON.stringify(newLogs)}\n\n`);
+      lastId = logs.length;
+    }
+  };
+
+  send();
+  const interval = setInterval(send, 300);
+  req.on('close', () => clearInterval(interval));
+});
+
 // ── Logs ─────────────────────────────────────────────────
 app.get('/api/logs', (_, res) => res.json(agent.getLogs()));
 app.delete('/api/logs', async (_, res) => { await agent.clearLogs(); res.json({ ok: true }); });

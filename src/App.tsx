@@ -205,25 +205,42 @@ export default function App() {
   const atBottomRef = useRef(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Polling
+  // SSE para logs en tiempo real
   useEffect(() => {
-    let mounted = true;
-    async function poll() {
-      try {
-        const [logsData, statusData] = await Promise.all([
-          fetch('/api/logs').then(r => r.json()),
-          fetch('/api/status').then(r => r.json()),
-        ]);
-        if (!mounted) return;
-        setLogs(logsData);
-        setState(statusData.state);
-        setProviders(statusData.providers);
-        setConfig(statusData.config);
-      } catch { /* server not ready */ }
+    let es: EventSource | null = null;
+    let statusInterval: any = null;
+
+    function connectSSE() {
+      es = new EventSource('/api/logs/stream');
+      es.onmessage = (e) => {
+        const newLogs = JSON.parse(e.data);
+        setLogs(prev => {
+          const ids = new Set(prev.map((l: any) => l.id));
+          const fresh = newLogs.filter((l: any) => !ids.has(l.id));
+          return fresh.length ? [...prev, ...fresh] : prev;
+        });
+      };
+      es.onerror = () => {
+        es?.close();
+        setTimeout(connectSSE, 2000);
+      };
     }
-    poll();
-    const id = setInterval(poll, 1000);
-    return () => { mounted = false; clearInterval(id); };
+
+    connectSSE();
+
+    // Status sigue en polling liviano
+    async function pollStatus() {
+      try {
+        const s = await fetch('/api/status').then(r => r.json());
+        setState(s.state);
+        setProviders(s.providers);
+        setConfig(s.config);
+      } catch {}
+    }
+    pollStatus();
+    statusInterval = setInterval(pollStatus, 1500);
+
+    return () => { es?.close(); clearInterval(statusInterval); };
   }, []);
 
   // Auto scroll

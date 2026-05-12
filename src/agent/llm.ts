@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { generateText, type CoreMessage } from 'ai';
+import { streamText, type CoreMessage } from 'ai';
 import type { AgentLog, ProviderConfig } from './types.js';
 
 export type LogFn = (
@@ -33,68 +33,58 @@ export async function runAgent(opts: {
   const { provider, modelId, systemPrompt, messages, tools, maxSteps, log } = opts;
 
   const model = createModel(provider, modelId);
-  const allMessages: CoreMessage[] = [...messages];
-  const newMessages: CoreMessage[] = [];
   let stepCount = 0;
   let lastFinishReason = 'stop';
 
   log('info', `Starting with ${provider.type}/${modelId} | maxSteps: ${maxSteps}`);
 
-  while (stepCount < maxSteps) {
-    stepCount++;
-
-    const result = await generateText({
-      model,
-      system: systemPrompt,
-      messages: allMessages,
-      tools,
-      toolChoice: 'auto',
-      maxSteps: 1,
-    });
-
-    lastFinishReason = result.finishReason;
-    const text = result.text ?? '';
-    const toolCalls = result.toolCalls ?? [];
-    const toolResults = result.toolResults ?? [];
-
-    // Log tool calls
-    for (const tc of toolCalls) {
-      log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
-    }
-
-    // Log tool results
-    for (const tr of toolResults as any[]) {
-      const raw = tr.result;
-      const txt = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      log('tool_result', `◀ ${tr.toolName}`, txt.slice(0, 1000), modelId, provider.type);
-    }
-
-    // Log text
-    if (text.trim()) {
-      if (lastFinishReason === 'stop') {
-        log('agent_message', text.trim(), {
-          inputTokens: result.usage?.promptTokens,
-          outputTokens: result.usage?.completionTokens,
-        }, modelId, provider.type);
-      } else {
-        log('thought', text.trim(), undefined, modelId, provider.type);
+  const result = streamText({
+    model,
+    system: systemPrompt,
+    messages,
+    tools,
+    toolChoice: 'auto',
+    maxSteps,
+    onChunk({ chunk }: any) {
+      if (chunk.type === 'text-delta' && chunk.textDelta) {
+        log('thought', chunk.textDelta, undefined, modelId, provider.type);
       }
-    }
+    },
+    onStepFinish(step: any) {
+      stepCount++;
+      const toolCalls: any[] = step.toolCalls ?? [];
+      const toolResults: any[] = step.toolResults ?? [];
+      const finishReason: string = step.finishReason ?? '';
+      lastFinishReason = finishReason;
 
-    log('info', `Step ${stepCount}/${maxSteps} — finish: ${lastFinishReason} | tools: ${toolCalls.length}`);
+      for (const tc of toolCalls) {
+        log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
+      }
+      for (const tr of toolResults) {
+        const raw = tr.result;
+        const txt = typeof raw === 'string' ? raw : JSON.stringify(raw);
+        log('tool_result', `◀ ${tr.toolName}`, txt.slice(0, 1000), modelId, provider.type);
+      }
+      log('info', `Step ${stepCount}/${maxSteps} — finish: ${finishReason} | tools: ${toolCalls.length}`);
+    },
+    onFinish({ text, usage }: any) {
+      if (text?.trim()) {
+        log('agent_message', text.trim(), {
+          inputTokens: usage?.promptTokens,
+          outputTokens: usage?.completionTokens,
+        }, modelId, provider.type);
+      }
+    },
+  });
 
-    // Append new messages to history
-    const stepMessages = result.responseMessages as CoreMessage[];
-    allMessages.push(...stepMessages);
-    newMessages.push(...stepMessages);
+  // Consume the stream fully
+  await result.consumeStream();
 
-    // Stop if done
-    if (lastFinishReason === 'stop' || lastFinishReason === 'length' || toolCalls.length === 0) {
-      break;
-    }
-  }
-
+  const responseMessages = await result.responseMessages;
   log('info', `Done. Steps: ${stepCount} | Finish: ${lastFinishReason}`);
 
-  return { newMessages, finishReason: lastFinishReason };
+  return {
+    newMessages: (responseMessages ?? []) as CoreMessage[],
+    finishReason: lastFinishReason,
+  };
 }
