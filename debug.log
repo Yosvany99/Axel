@@ -1,0 +1,50 @@
+[TAILING] Tailing last 50 lines for [agent] process (change the value with --lines option)
+/home/axel/.pm2/logs/agent-error.log last 50 lines:
+0|agent    | Error: ENOENT: no such file or directory, stat '/home/axel/agent/src/public/index.html'
+0|agent    | Error: ENOENT: no such file or directory, stat '/home/axel/agent/src/public/index.html'
+0|agent    | Error: ENOENT: no such file or directory, stat '/home/axel/agent/src/public/index.html'
+0|agent    | Error: ENOENT: no such file or directory, stat '/home/axel/agent/src/public/index.html'
+0|agent    | Error: ENOENT: no such file or directory, stat '/home/axel/agent/src/public/index.html'
+0|agent    | TypeError [ERR_INVALID_ARG_TYPE]: The "path" argument must be of type string or an instance of URL. Received undefined
+0|agent    |     at fileURLToPath (node:internal/url:1487:11)
+0|agent    |     at Object.<anonymous> (/home/axel/agent/dist/server.cjs:38134:75)
+0|agent    |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+0|agent    |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+0|agent    |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+0|agent    |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+0|agent    |     at cjsLoader (node:internal/modules/esm/translators:298:15)
+0|agent    |     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:240:7)
+0|agent    |     at ModuleJob.run (node:internal/modules/esm/module_job:325:25)
+0|agent    |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+0|agent    |   code: 'ERR_INVALID_ARG_TYPE'
+0|agent    | }
+
+/home/axel/.pm2/logs/agent-out.log last 50 lines:
+0|agent    | 
+0|agent    | > agent@1.0.0 dev
+0|agent    | > tsx src/server.ts
+0|agent    | 
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | 
+0|agent    | > agent@1.0.0 dev
+0|agent    | > tsx src/server.ts
+0|agent    | 
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+0|agent    | Agent server running on http://localhost:3001
+
