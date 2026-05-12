@@ -205,8 +205,14 @@ export class AgentSystem {
         log,
       });
 
-      // Append new messages (assistant replies + tool turns) to history
-      if (Array.isArray(newMessages)) this.history.push(...newMessages);
+      // Strip thought signatures that Gemini 3.x adds (breaks replay)
+      const clean = newMessages.map((m: any) => {
+        if (m.role === 'assistant' && Array.isArray(m.content)) {
+          return { ...m, content: m.content.filter((p: any) => p.type !== 'reasoning') };
+        }
+        return m;
+      });
+      if (Array.isArray(clean)) this.history.push(...clean);
       await this.saveHistory();
     } catch (err: any) {
       this.addLog('error', `Agent failed: ${err.message}`);
