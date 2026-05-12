@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { generateText, type CoreMessage, type StepResult } from 'ai';
+import { generateText, type CoreMessage } from 'ai';
 import type { AgentLog, ProviderConfig } from './types.js';
 
 export type LogFn = (
@@ -43,60 +43,47 @@ export async function runAgent(opts: {
     messages,
     tools,
     maxSteps,
-    toolChoice: "auto",
-    providerOptions: { google: { thinkingConfig: { thinkingBudget: 8192 } } },
-    onStepFinish(step: StepResult<any>) {
+    toolChoice: 'auto',
+    onStep(step: any) {
       stepCount++;
 
-      // Log thoughts (text emitted mid-loop, not the final answer)
-      if (step.text?.trim() && step.finishReason !== 'stop') {
-        log('thought', step.text.trim(), undefined, modelId, provider.type);
+      const toolCalls: any[] = step.toolCalls ?? [];
+      const toolResults: any[] = step.toolResults ?? [];
+      const text: string = step.text ?? '';
+      const finishReason: string = step.finishReason ?? '';
+
+      // Log thoughts
+      if (text.trim() && finishReason !== 'stop') {
+        log('thought', text.trim(), undefined, modelId, provider.type);
       }
 
       // Log final answer
-      if (step.text?.trim() && step.finishReason === 'stop') {
-        log('agent_message', step.text.trim(), {
+      if (text.trim() && finishReason === 'stop') {
+        log('agent_message', text.trim(), {
           inputTokens: step.usage?.promptTokens,
           outputTokens: step.usage?.completionTokens,
         }, modelId, provider.type);
       }
 
-      // Log each tool call
-      if (step.toolCalls && step.toolCalls.length > 0) {
-        for (const tc of step.toolCalls) {
-          log(
-            'tool_call',
-            `▶ ${tc.toolName}`,
-            tc.args,
-            modelId,
-            provider.type
-          );
-        }
+      // Log tool calls
+      for (const tc of toolCalls) {
+        log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
       }
 
-      // Log each tool result
-      if (step.toolResults && step.toolResults.length > 0) {
-        for (const tr of step.toolResults) {
-          const raw = tr.result;
-          const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
-          const preview = text.length > 1000 ? text.slice(0, 1000) + '…' : text;
-          log(
-            'tool_result',
-            `◀ ${tr.toolName}`,
-            preview,
-            modelId,
-            provider.type
-          );
-        }
+      // Log tool results
+      for (const tr of toolResults) {
+        const raw = tr.result;
+        const text = typeof raw === 'string' ? raw : JSON.stringify(raw);
+        const preview = text.length > 1000 ? text.slice(0, 1000) + '…' : text;
+        log('tool_result', `◀ ${tr.toolName}`, preview, modelId, provider.type);
       }
 
-      log('info', `Step ${stepCount}/${maxSteps} — finish: ${step.finishReason} | tools: ${step.toolCalls?.length ?? 0}`);
+      log('info', `Step ${stepCount}/${maxSteps} — finish: ${finishReason} | tools: ${toolCalls.length}`);
     }
   });
 
   log('info', `Done. Steps: ${stepCount} | Finish: ${result.finishReason}`);
 
-  // responseMessages contains the new assistant + tool messages to append
   return {
     newMessages: (result.responseMessages ?? []) as CoreMessage[],
     finishReason: result.finishReason
