@@ -1,6 +1,6 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { generateText, type CoreMessage } from 'ai';
+import { generateText, stepCountIs, type CoreMessage } from 'ai';
 import type { AgentLog, ProviderConfig } from './types.js';
 
 export type LogFn = (
@@ -42,12 +42,10 @@ export async function runAgent(opts: {
     messages,
     tools,
     toolChoice: 'auto',
-    maxSteps,
-    // Log tool calls as they start
+    stopWhen: stepCountIs(maxSteps),
     experimental_onToolCallStart({ toolName, input }: any) {
       log('tool_call', `▶ ${toolName}`, input, modelId, provider.type);
     },
-    // Log tool results as they finish
     experimental_onToolCallFinish({ toolName, output, error }: any) {
       if (error) {
         log('tool_result', `◀ ${toolName} ERROR`, String(error), modelId, provider.type);
@@ -73,11 +71,10 @@ export async function runAgent(opts: {
         }
       }
 
-      log('info', `Step ${stepCount}/${maxSteps} — finish: ${finishReason} | tools: ${toolCalls.length}`);
+      log('info', `Step ${stepCount} — finish: ${finishReason} | tools: ${toolCalls.length}`);
     }
   });
 
-  // Fallback: respuesta directa sin steps
   if (stepCount === 0 && result.text?.trim()) {
     log('agent_message', result.text.trim(), {
       inputTokens: result.usage?.promptTokens,
