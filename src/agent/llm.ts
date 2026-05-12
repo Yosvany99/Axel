@@ -33,57 +33,68 @@ export async function runAgent(opts: {
   const { provider, modelId, systemPrompt, messages, tools, maxSteps, log } = opts;
 
   const model = createModel(provider, modelId);
+  const allMessages: CoreMessage[] = [...messages];
+  const newMessages: CoreMessage[] = [];
   let stepCount = 0;
+  let lastFinishReason = 'stop';
 
   log('info', `Starting with ${provider.type}/${modelId} | maxSteps: ${maxSteps}`);
 
-  const result = await generateText({
-    model,
-    system: systemPrompt,
-    messages,
-    tools,
-    maxSteps,
-    toolChoice: 'auto',
-    onStepFinish(step: any) {
-      stepCount++;
-      const toolCalls: any[] = step.toolCalls ?? [];
-      const toolResults: any[] = step.toolResults ?? [];
-      const text: string = step.text ?? '';
-      const finishReason: string = step.finishReason ?? '';
+  while (stepCount < maxSteps) {
+    stepCount++;
 
-      if (text.trim() && finishReason !== 'stop') {
+    const result = await generateText({
+      model,
+      system: systemPrompt,
+      messages: allMessages,
+      tools,
+      toolChoice: 'auto',
+      maxSteps: 1,
+    });
+
+    lastFinishReason = result.finishReason;
+    const text = result.text ?? '';
+    const toolCalls = result.toolCalls ?? [];
+    const toolResults = result.toolResults ?? [];
+
+    // Log tool calls
+    for (const tc of toolCalls) {
+      log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
+    }
+
+    // Log tool results
+    for (const tr of toolResults as any[]) {
+      const raw = tr.result;
+      const txt = typeof raw === 'string' ? raw : JSON.stringify(raw);
+      log('tool_result', `◀ ${tr.toolName}`, txt.slice(0, 1000), modelId, provider.type);
+    }
+
+    // Log text
+    if (text.trim()) {
+      if (lastFinishReason === 'stop') {
+        log('agent_message', text.trim(), {
+          inputTokens: result.usage?.promptTokens,
+          outputTokens: result.usage?.completionTokens,
+        }, modelId, provider.type);
+      } else {
         log('thought', text.trim(), undefined, modelId, provider.type);
       }
-      if (text.trim() && finishReason === 'stop') {
-        log('agent_message', text.trim(), {
-          inputTokens: step.usage?.promptTokens,
-          outputTokens: step.usage?.completionTokens,
-        }, modelId, provider.type);
-      }
-      for (const tc of toolCalls) {
-        log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
-      }
-      for (const tr of toolResults) {
-        const raw = tr.result;
-        const txt = typeof raw === 'string' ? raw : JSON.stringify(raw);
-        log('tool_result', `◀ ${tr.toolName}`, txt.slice(0, 1000), modelId, provider.type);
-      }
-      log('info', `Step ${stepCount}/${maxSteps} — finish: ${finishReason} | tools: ${toolCalls.length}`);
     }
-  });
 
-  // Si no hubo steps (respuesta directa sin tools), loguear igual
-  if (stepCount === 0 && result.text?.trim()) {
-    log('agent_message', result.text.trim(), {
-      inputTokens: result.usage?.promptTokens,
-      outputTokens: result.usage?.completionTokens,
-    }, modelId, provider.type);
+    log('info', `Step ${stepCount}/${maxSteps} — finish: ${lastFinishReason} | tools: ${toolCalls.length}`);
+
+    // Append new messages to history
+    const stepMessages = result.responseMessages as CoreMessage[];
+    allMessages.push(...stepMessages);
+    newMessages.push(...stepMessages);
+
+    // Stop if done
+    if (lastFinishReason === 'stop' || lastFinishReason === 'length' || toolCalls.length === 0) {
+      break;
+    }
   }
 
-  log('info', `Done. Steps: ${stepCount} | Finish: ${result.finishReason}`);
+  log('info', `Done. Steps: ${stepCount} | Finish: ${lastFinishReason}`);
 
-  return {
-    newMessages: (result.responseMessages ?? []) as CoreMessage[],
-    finishReason: result.finishReason
-  };
+  return { newMessages, finishReason: lastFinishReason };
 }
