@@ -44,7 +44,7 @@ export async function runAgent(opts: {
     tools,
     maxSteps,
     toolChoice: "auto",
-    providerOptions: { google: { thinkingConfig: { thinkingBudget: 0 } } },
+    providerOptions: { google: { thinkingConfig: { thinkingBudget: 8192 } } },
     onStepFinish(step: StepResult<any>) {
       stepCount++;
 
