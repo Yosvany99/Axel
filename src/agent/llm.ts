@@ -33,7 +33,6 @@ export async function runAgent(opts: {
   const { provider, modelId, systemPrompt, messages, tools, maxSteps, log } = opts;
   const model = createModel(provider, modelId);
   let stepCount = 0;
-  let lastFinishReason = 'stop';
 
   log('info', `Starting with ${provider.type}/${modelId} | maxSteps: ${maxSteps}`);
 
@@ -44,15 +43,27 @@ export async function runAgent(opts: {
     tools,
     toolChoice: 'auto',
     maxSteps,
+    // Log tool calls as they start
+    experimental_onToolCallStart({ toolName, input }: any) {
+      log('tool_call', `▶ ${toolName}`, input, modelId, provider.type);
+    },
+    // Log tool results as they finish
+    experimental_onToolCallFinish({ toolName, output, error }: any) {
+      if (error) {
+        log('tool_result', `◀ ${toolName} ERROR`, String(error), modelId, provider.type);
+      } else {
+        const txt = typeof output === 'string' ? output : JSON.stringify(output ?? '');
+        log('tool_result', `◀ ${toolName}`, txt.slice(0, 2000), modelId, provider.type);
+      }
+    },
     onStepFinish(step: any) {
       stepCount++;
-      const toolCalls: any[] = step.toolCalls ?? [];
-      const toolResults: any[] = step.toolResults ?? [];
       const text: string = step.text ?? '';
-      lastFinishReason = step.finishReason ?? 'stop';
+      const finishReason: string = step.finishReason ?? 'stop';
+      const toolCalls: any[] = step.toolCalls ?? [];
 
       if (text.trim()) {
-        if (lastFinishReason === 'stop') {
+        if (finishReason === 'stop') {
           log('agent_message', text.trim(), {
             inputTokens: step.usage?.promptTokens,
             outputTokens: step.usage?.completionTokens,
@@ -62,21 +73,11 @@ export async function runAgent(opts: {
         }
       }
 
-      for (const tc of toolCalls) {
-        log('tool_call', `▶ ${tc.toolName}`, tc.args, modelId, provider.type);
-      }
-
-      for (const tr of toolResults) {
-        const raw = tr.result;
-        const txt = typeof raw === 'string' ? raw : JSON.stringify(raw ?? '(empty)');
-        log('tool_result', `◀ ${tr.toolName}`, txt.slice(0, 2000), modelId, provider.type);
-      }
-
-      log('info', `Step ${stepCount}/${maxSteps} — finish: ${lastFinishReason} | tools: ${toolCalls.length} | results: ${toolResults.length}`);
+      log('info', `Step ${stepCount}/${maxSteps} — finish: ${finishReason} | tools: ${toolCalls.length}`);
     }
   });
 
-  // Fallback: si no hubo steps pero hay texto
+  // Fallback: respuesta directa sin steps
   if (stepCount === 0 && result.text?.trim()) {
     log('agent_message', result.text.trim(), {
       inputTokens: result.usage?.promptTokens,
