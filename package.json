@@ -8,9 +8,9 @@
     "start": "node dist/server.cjs"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/google": "^3.0.72",
     "@openrouter/ai-sdk-provider": "^0.4.0",
-    "ai": "^4.0.0",
+    "ai": "^6.0.177",
     "dotenv": "^16.0.0",
     "express": "^4.21.0",
     "zod": "^3.23.0"
