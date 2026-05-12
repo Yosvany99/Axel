@@ -68,7 +68,7 @@ export function getTools() {
       parameters: z.object({ filter: z.string().optional() }),
       execute: async ({ filter }) => {
         try {
-          const cmd = filter ? `ps aux | grep ${filter} | grep -v grep` : 'ps aux --sort=-%cpu | head -30';
+          const cmd = filter ? `ps aux | grep "${filter}" | grep -v grep` : 'ps aux --sort=-%cpu | head -30';
           const { stdout } = await execAsync(cmd);
           return stdout.trim() || 'No processes found';
         } catch (err: any) { return `ERROR: ${err.message}`; }
@@ -221,7 +221,7 @@ export function getTools() {
         try {
           const abs = path.resolve(process.cwd(), dirPath);
           if (recursive) {
-            const { stdout } = await execAsync(`find ${abs} -maxdepth 4 | head -200`);
+            const { stdout } = await execAsync(`find "${abs}" -maxdepth 4 | head -200`);
             return stdout.trim();
           }
           const items = await fs.readdir(abs, { withFileTypes: true });
@@ -244,7 +244,7 @@ export function getTools() {
             : `grep -r --include="*" -l "${pattern}" ${directory} 2>/dev/null | head -20 && grep -r -n "${pattern}" ${directory} 2>/dev/null | head -50`;
           const { stdout } = await execAsync(cmd);
           return stdout.trim() || 'No results found';
-        } catch (err: any) { return stdout => stdout || `ERROR: ${err.message}`; }
+        } catch (err: any) { return `ERROR: ${err.message}`; }
       }
     }),
 
@@ -410,11 +410,24 @@ export function getTools() {
             return stdout.trim();
           }
           if (action === 'add' && job) {
-            await execAsync(`(crontab -l 2>/dev/null; echo "${job}") | crontab -`);
+            const tmpFile = path.join(os.tmpdir(), `cron_add_${Date.now()}.txt`);
+            try {
+              let current = '';
+              try { current = (await execAsync('crontab -l 2>/dev/null')).stdout; } catch {}
+              await fs.writeFile(tmpFile, current.trimEnd() + '\n' + job + '\n', 'utf-8');
+              await execAsync(`crontab "${tmpFile}"`);
+            } finally { fs.unlink(tmpFile).catch(() => {}); }
             return `Added cron: ${job}`;
           }
           if (action === 'remove' && job) {
-            await execAsync(`crontab -l | grep -v "${job}" | crontab -`);
+            const tmpFile = path.join(os.tmpdir(), `cron_remove_${Date.now()}.txt`);
+            try {
+              let current = '';
+              try { current = (await execAsync('crontab -l 2>/dev/null')).stdout; } catch {}
+              const filtered = current.split('\n').filter(line => !line.includes(job)).join('\n');
+              await fs.writeFile(tmpFile, filtered, 'utf-8');
+              await execAsync(`crontab "${tmpFile}"`);
+            } finally { fs.unlink(tmpFile).catch(() => {}); }
             return `Removed cron matching: ${job}`;
           }
           return 'Invalid action';
