@@ -64,9 +64,9 @@ export function getTools() {
 
     // ── PROCESOS ──────────────────────────────────────────
     list_processes: tool({
-      description: 'List running processes. Filter by name optionally.',
-      parameters: z.object({ filter: z.string().optional() }),
-      execute: async ({ filter }) => {
+      description: 'List running processes. Filter by process name optionally.',
+      parameters: z.object({ name: z.string().optional().describe('Filter by process name') }),
+      execute: async ({ name: filter }) => {
         try {
           const cmd = filter ? `ps aux | grep "${filter}" | grep -v grep` : 'ps aux --sort=-%cpu | head -30';
           const { stdout } = await execAsync(cmd);
